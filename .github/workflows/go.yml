@@ -1,0 +1,56 @@
+name: Build master
+
+on:
+  push:
+    branches:
+      - 'master'
+    tags-ignore:
+      - 'v*'
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+    steps:
+
+      - name: Check out
+        uses: actions/checkout@v2.4.0
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+
+      - name: Get time
+        uses: gerred/actions/current-time@master
+        id: current-time
+
+      - name: Cache go module
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build
+        uses: crazy-max/ghaction-xgo@v1.6.1
+        env:
+          TIME: "${{ steps.current-time.outputs.time }}"
+        with:
+          xgo_version: latest
+          go_version: 1.17
+          dest: dist
+          prefix: scanPort 
+          ldflags: -w -s -X main.appCommit=${{ github.sha }} -X main.appDate=${{ env.TIME }}
+          pkg: /
+
+      - name: Archive
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
